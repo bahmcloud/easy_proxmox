@@ -82,8 +82,6 @@ Example:
 - Realm: `pam` or `pve`
 - Set a password (only for management; the token will be used for API access)
 
----
-
 ### 2) Create an API Token
 
 Datacenter → Permissions → API Tokens → Add
@@ -98,9 +96,6 @@ You will get:
     
     Token Name: homeassistant@pve!easyproxmox
     Token Secret: <long secret string>
-
-
----
 
 ### 3) Assign Permissions (Admin Rights)
 
@@ -139,11 +134,116 @@ After saving:
 
 ---
 
+## 🚀 Services & Automations (since v0.7.0)
+
+Easy Proxmox provides Home Assistant services so you can fully control your VMs and containers in automations and scripts without using buttons or switches.
+
+Available services:
+
+| Service | Description |
+|--------|------------|
+| `proxmox_pve.start` | Start a VM or container |
+| `proxmox_pve.shutdown` | Gracefully shutdown a VM or container |
+| `proxmox_pve.stop_hard` | Hard stop a VM or container |
+| `proxmox_pve.reboot` | Reboot a VM or container |
+
+All services are **multi-host aware** and automatically select the correct Proxmox server.
+
+### ✅ Recommended usage: Device based
+
+This is the safest and easiest way, especially for multi-host setups.
+
+In an automation or script:
+
+```yaml
+service: proxmox_pve.shutdown
+target:
+  device_id: YOUR_DEVICE_ID
+```
+
+In the UI, you can simply select the VM/CT device from the dropdown.
+
+Home Assistant will automatically:
+
+ - Find the correct Proxmox host
+ - Find the correct node
+ - Execute the action
+
+### 🔧 Manual usage: Node / VMID based
+
+You can also call services manually:
+
+```yaml
+service: proxmox_pve.reboot
+data:
+  node: pve1
+  vmid: 100
+  type: qemu
+```
+If you have multiple Proxmox servers configured, you should also specify one of:
+```yaml
+host: 192.168.178.101
+```
+
+or
+```yaml
+config_entry_id: 8d9f2e7b1c3d4a5f...
+```
+
+This avoids ambiguity.
+
+### 🧠 Resolution priority
+
+When a service is called, Easy Proxmox resolves the target in this order:
+
+ 1. `config_entry_id`
+ 2. `device_id`
+ 3. `host`
+ 4. Guest lookup by `node + vmid + type`
+
+If a guest exists on multiple Proxmox hosts, the call fails and asks for clarification.
+
+### 🏗 Example automations
+
+Shutdown all test systems at night:
+```yaml
+alias: Stop Test VM at Night
+trigger:
+  - platform: time
+    at: "23:00:00"
+action:
+  - service: proxmox_pve.shutdown
+    target:
+      device_id: 123456abcdef...
+```
+
+Start a VM when electricity price is low:
+```yaml
+alias: Start VM on cheap power
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.power_price
+    below: 0.20
+action:
+  - service: proxmox_pve.start
+    target:
+      device_id: 123456abcdef...
+```
+
+### 🧩 Why this matters
+
+With services you can:
+
+ - Fully automate your Proxmox infrastructure
+ - Remove dependency on dashboard buttons
+ - Build power-saving or maintenance automations
+ - Control multiple Proxmox clusters cleanly
+
+---
 ## Options (Gear Icon)
 
 After setup, open:
     Settings → Devices & Services → Easy Proxmox → Options (gear icon)
-    
 
 ### Polling Interval
 How often data is fetched from Proxmox.
@@ -156,8 +256,6 @@ How often data is fetched from Proxmox.
 
 Changes are applied immediately (no restart required).
 
----
-
 ### IP Preference Mode
 
 Controls which IP is shown as the “primary” IP for a guest:
@@ -168,8 +266,6 @@ Controls which IP is shown as the “primary” IP for a guest:
 | prefer_private | Prefer private networks (10.x, 172.16–31.x, 192.168.x) |
 | any | Use the first available IP |
 | custom_prefix | Use a custom prefix |
-
----
 
 ### Custom IP Prefix
 
