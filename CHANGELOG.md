@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+- Fixed Home Assistant service UI integration:
+  - Services now properly expose the **Device selector** in the visual automation editor
+  - Implemented correct handling of `call.target.device_id`
+  - Services are now fully compatible with Home Assistant’s target system
+- Fixed issue where only a YAML data field was shown instead of a device selection field
+- Improved service robustness when used in multi-host environments
+- This release is a bugfix release for v0.7.0
+
 ## 0.7.0
 - Added full service support for automations and scripts:
   - `proxmox_pve.start`
@@ -110,5 +119,6 @@
 - API token authentication
 - Basic connectivity test via Config Flow
 - First experimental entities
+
 
 
