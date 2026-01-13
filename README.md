@@ -3,6 +3,8 @@
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/bahmcloud/easy_proxmox?sort=semver)
 ![HACS Integration](https://img.shields.io/badge/HACS%20Integration-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=bahmcloud&repository=easy_proxmox)
+
 
 <img width="1230" height="300" alt="logo" src="https://github.com/user-attachments/assets/7649cc04-bdcd-449e-bf83-c4f980f3de74" />
 
