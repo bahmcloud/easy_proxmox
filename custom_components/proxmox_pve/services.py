@@ -24,8 +24,7 @@ ATTR_TYPE = "type"
 
 VALID_TYPES = ("qemu", "lxc")
 
-# IMPORTANT:
-# HA may pass device_id via target (list) OR data (list) depending on UI/script wrapper.
+# HA may pass device_id as str or list[str] (especially when using UI targets).
 SERVICE_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_DEVICE_ID): vol.Any(str, [str]),
@@ -49,17 +48,11 @@ def _first_str(value: Any) -> str | None:
     return None
 
 
-def _get_target_device_id(call: ServiceCall) -> str | None:
+def _get_device_id(call: ServiceCall) -> str | None:
     """
-    Prefer call.target.device_id (UI target).
-    Fallback to call.data.device_id (some wrappers convert target to data).
+    IMPORTANT: On some HA versions ServiceCall has no .target attribute.
+    UI targets are still provided, usually as data.device_id (often a list).
     """
-    if call.target and isinstance(call.target, dict):
-        dev_id = _first_str(call.target.get("device_id"))
-        if dev_id:
-            return dev_id
-
-    # fallback: data.device_id can be str or list[str]
     return _first_str(call.data.get(ATTR_DEVICE_ID))
 
 
@@ -79,8 +72,8 @@ def _parse_guest_identifier(identifier: str) -> Tuple[str, str, int]:
 
 
 def _resolve_target(hass: HomeAssistant, call: ServiceCall) -> Tuple[str, str, int]:
-    """Resolve node/type/vmid from device target OR node+vmid (+ optional type)."""
-    device_id = _get_target_device_id(call)
+    """Resolve node/type/vmid from device_id OR node+vmid (+ optional type)."""
+    device_id = _get_device_id(call)
     node = call.data.get(ATTR_NODE)
     vmid = call.data.get(ATTR_VMID)
     vmtype = call.data.get(ATTR_TYPE, "qemu")
@@ -91,17 +84,20 @@ def _resolve_target(hass: HomeAssistant, call: ServiceCall) -> Tuple[str, str, i
         if not device:
             raise ValueError(f"Device not found: {device_id}")
 
+        # Find our guest identifier in device.identifiers
         for ident_domain, ident_value in device.identifiers:
             if ident_domain != DOMAIN:
                 continue
+            # Node devices are "node:<name>" — ignore those
             if ident_value.startswith("node:"):
                 continue
             return _parse_guest_identifier(ident_value)
 
         raise ValueError(f"Selected device has no Easy Proxmox guest identifier: {device_id}")
 
+    # manual mode
     if not node or vmid is None:
-        raise ValueError("Provide a Device target OR node + vmid (+ optional type/host/config_entry_id).")
+        raise ValueError("Provide device_id OR node + vmid (+ optional type/host/config_entry_id).")
 
     if vmtype not in VALID_TYPES:
         raise ValueError(f"Invalid type: {vmtype} (allowed: {VALID_TYPES})")
@@ -117,6 +113,7 @@ def _get_domain_entries(hass: HomeAssistant) -> dict[str, Any]:
 
 
 def _pick_entry_id_for_device(hass: HomeAssistant, device_id: str) -> str:
+    """Pick correct config_entry_id by using device.config_entries."""
     dev_reg = dr.async_get(hass)
     device = dev_reg.async_get(device_id)
     if not device:
@@ -149,6 +146,7 @@ def _pick_entry_id_by_host(hass: HomeAssistant, host: str) -> str:
 
 
 def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, vmid: int) -> str:
+    """Find correct entry by scanning each entry's resources list."""
     domain_entries = _get_domain_entries(hass)
     matches = []
 
@@ -171,17 +169,18 @@ def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, 
     if not matches:
         raise ValueError(
             f"Could not find guest {node}/{vmtype}/{vmid} in any configured Proxmox host. "
-            "Provide host or config_entry_id, or use device target."
+            "Provide host or config_entry_id, or use device_id."
         )
     if len(matches) > 1:
         raise ValueError(
             f"Guest {node}/{vmtype}/{vmid} exists on multiple configured hosts (ambiguous). "
-            "Please provide host or config_entry_id, or use device target."
+            "Please provide host or config_entry_id, or use device_id."
         )
     return matches[0]
 
 
 def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str, str, int]) -> str:
+    """Resolve which config entry should execute this service call."""
     domain_entries = _get_domain_entries(hass)
 
     config_entry_id = call.data.get(ATTR_CONFIG_ENTRY_ID)
@@ -190,7 +189,7 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str,
             raise ValueError(f"config_entry_id '{config_entry_id}' not found or not loaded.")
         return config_entry_id
 
-    device_id = _get_target_device_id(call)
+    device_id = _get_device_id(call)
     if device_id:
         return _pick_entry_id_for_device(hass, device_id)
 
@@ -203,6 +202,7 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str,
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
+    """Register services once per HA instance."""
     if hass.services.has_service(DOMAIN, SERVICE_START):
         return
 
@@ -219,22 +219,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
         _LOGGER.debug("Service action=%s entry=%s target=%s/%s/%s", action, entry_id, node, vmtype, vmid)
         await client.guest_action(node=node, vmid=vmid, vmtype=vmtype, action=action)
 
-    async def handle_start(call: ServiceCall) -> None:
-        await _call_action(call, "start")
-
-    async def handle_shutdown(call: ServiceCall) -> None:
-        await _call_action(call, "shutdown")
-
-    async def handle_stop_hard(call: ServiceCall) -> None:
-        await _call_action(call, "stop")
-
-    async def handle_reboot(call: ServiceCall) -> None:
-        await _call_action(call, "reboot")
-
-    hass.services.async_register(DOMAIN, SERVICE_START, handle_start, schema=SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SHUTDOWN, handle_shutdown, schema=SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_STOP_HARD, handle_stop_hard, schema=SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_REBOOT, handle_reboot, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_START, lambda call: _call_action(call, "start"), schema=SERVICE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_SHUTDOWN, lambda call: _call_action(call, "shutdown"), schema=SERVICE_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, SERVICE_STOP_HARD, lambda call: _call_action(call, "stop"), schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_REBOOT, lambda call: _call_action(call, "reboot"), schema=SERVICE_SCHEMA)
 
 
 async def async_unregister_services(hass: HomeAssistant) -> None:
