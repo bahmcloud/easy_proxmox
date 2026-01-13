@@ -1,3 +1,5 @@
+# Easy Proxmox (by René Bachmann)
+
 <img width="1230" height="300" alt="logo" src="https://github.com/user-attachments/assets/7649cc04-bdcd-449e-bf83-c4f980f3de74" />
 
 A powerful Home Assistant integration to monitor and control Proxmox VE. With Easy Proxmox you can monitor nodes, VMs and containers directly in Home Assistant, start/stop/reboot guests and display detailed system metrics.
@@ -35,20 +37,30 @@ A powerful Home Assistant integration to monitor and control Proxmox VE. With Ea
 
 ---
 
-## Installation
+## 📦 Installation via HACS (Recommended)
 
-1. Create the folder:
-    /config/custom_components/proxmox_pve/
+To install Easy Proxmox through HACS:
 
+1. **Ensure HACS is already installed** in your Home Assistant instance.  
+   If not, follow the official guide: https://hacs.xyz/
 
-2. Copy all integration files into that folder.
+2. Open **HACS → Integrations**.
 
-3. Restart Home Assistant.
+3. Click the **“⋯” (three dots)** → **Custom repositories**.
 
-4. Add the integration:
-    
-    Settings → Devices & Services → Add Integration → Easy Proxmox
+4. Add the following repository:
+   - Repository URL:  
+     ```
+     https://github.com/bahmcloud/easy_proxmox
+     ```
+   - Category: **Integration**
+   - Version: **Tags (recommended)**
 
+5. Click **Add**, then locate **Easy Proxmox** in the HACS list and click **Install**.
+
+6. After installation, **restart Home Assistant**.
+
+7. Go to **Settings → Devices & Services → Add Integration → Easy Proxmox**.
 ---
 
 ## Proxmox: Create User & API Token
