@@ -1,0 +1,11 @@
+{
+  "domain": "proxmox_pve",
+  "name": "Easy Proxmox (by René Bachmann)",
+  "version": "0.6.0-alpha",
+  "documentation": "https://example.invalid",
+  "requirements": ["aiohttp>=3.9.0"],
+  "codeowners": ["@BAHMCLOUD", "@ReneBachmann"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "service"
+}
