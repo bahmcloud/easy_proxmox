@@ -1,5 +1,9 @@
 # Easy Proxmox (by René Bachmann)
 
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/bahmcloud/easy_proxmox?sort=semver)
+![HACS Integration](https://img.shields.io/badge/HACS%20Integration-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 <img width="1230" height="300" alt="logo" src="https://github.com/user-attachments/assets/7649cc04-bdcd-449e-bf83-c4f980f3de74" />
 
 A powerful Home Assistant integration to monitor and control Proxmox VE. With Easy Proxmox you can monitor nodes, VMs and containers directly in Home Assistant, start/stop/reboot guests and display detailed system metrics.
@@ -229,10 +233,16 @@ The API token has admin rights. Treat it like a root password:
 
 ---
 
-## License / Support
+## Support & Contributing
 
-Look into LICENSE file. 
+If you need help, open an issue in GitHub.  
+Want to contribute? Feel free to submit PRs!
 
 ---
 
 **Easy Proxmox aims to provide a complete Proxmox VE experience in Home Assistant.**
+
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
+Releases: https://github.com/bahmcloud/easy_proxmox/releases
+
