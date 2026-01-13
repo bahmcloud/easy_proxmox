@@ -15,7 +15,7 @@ SERVICE_SHUTDOWN = "shutdown"
 SERVICE_STOP_HARD = "stop_hard"
 SERVICE_REBOOT = "reboot"
 
-ATTR_DEVICE_ID = "device_id"
+ATTR_DEVICE_ID = "device_id"  # fallback if user manually puts it into data
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_HOST = "host"
 ATTR_NODE = "node"
@@ -24,6 +24,7 @@ ATTR_TYPE = "type"
 
 VALID_TYPES = ("qemu", "lxc")
 
+# NOTE: device selection in UI goes via call.target, not via call.data.
 SERVICE_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_DEVICE_ID): str,
@@ -34,6 +35,23 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_TYPE, default="qemu"): vol.In(VALID_TYPES),
     }
 )
+
+
+def _get_target_device_id(call: ServiceCall) -> str | None:
+    """Return single device_id selected in UI (call.target) or fallback call.data."""
+    # UI target: {"device_id": ["..."]}
+    if call.target and isinstance(call.target, dict):
+        dev_ids = call.target.get("device_id")
+        if isinstance(dev_ids, list) and dev_ids:
+            return dev_ids[0]
+        if isinstance(dev_ids, str):
+            return dev_ids
+
+    # YAML fallback: data.device_id
+    dev_id = call.data.get(ATTR_DEVICE_ID)
+    if isinstance(dev_id, str) and dev_id.strip():
+        return dev_id.strip()
+    return None
 
 
 def _parse_guest_identifier(identifier: str) -> Tuple[str, str, int]:
@@ -52,8 +70,8 @@ def _parse_guest_identifier(identifier: str) -> Tuple[str, str, int]:
 
 
 def _resolve_target(hass: HomeAssistant, call: ServiceCall) -> Tuple[str, str, int]:
-    """Resolve node/type/vmid from device_id OR node+vmid (+ optional type)."""
-    device_id = call.data.get(ATTR_DEVICE_ID)
+    """Resolve node/type/vmid from device target OR node+vmid (+ optional type)."""
+    device_id = _get_target_device_id(call)
     node = call.data.get(ATTR_NODE)
     vmid = call.data.get(ATTR_VMID)
     vmtype = call.data.get(ATTR_TYPE, "qemu")
@@ -77,7 +95,7 @@ def _resolve_target(hass: HomeAssistant, call: ServiceCall) -> Tuple[str, str, i
 
     # manual mode
     if not node or vmid is None:
-        raise ValueError("Provide either device_id OR node + vmid (+ optional type/host/config_entry_id).")
+        raise ValueError("Provide a Device target OR node + vmid (+ optional type/host/config_entry_id).")
 
     if vmtype not in VALID_TYPES:
         raise ValueError(f"Invalid type: {vmtype} (allowed: {VALID_TYPES})")
@@ -104,7 +122,6 @@ def _pick_entry_id_for_device(hass: HomeAssistant, device_id: str) -> str:
     if not candidates:
         raise ValueError("Device is not linked to any loaded Easy Proxmox config entry.")
     if len(candidates) > 1:
-        # Very unlikely, but handle it
         _LOGGER.warning("Device %s belongs to multiple Easy Proxmox entries, using first.", device_id)
     return candidates[0]
 
@@ -115,7 +132,6 @@ def _pick_entry_id_by_host(hass: HomeAssistant, host: str) -> str:
     for entry_id, data in domain_entries.items():
         if not isinstance(data, dict):
             continue
-        # host is stored in entry.data, but we keep it accessible here via "client.host" too
         client = data.get("client")
         if client and getattr(client, "host", None) == host:
             matches.append(entry_id)
@@ -128,10 +144,7 @@ def _pick_entry_id_by_host(hass: HomeAssistant, host: str) -> str:
 
 
 def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, vmid: int) -> str:
-    """
-    If user provides only node/vmid/type, try to find the correct entry by
-    scanning each entry's cluster resources list.
-    """
+    """Find correct entry by scanning each entry's resources list."""
     domain_entries = _get_domain_entries(hass)
     matches = []
 
@@ -154,12 +167,12 @@ def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, 
     if not matches:
         raise ValueError(
             f"Could not find guest {node}/{vmtype}/{vmid} in any configured Proxmox host. "
-            "Provide host or config_entry_id."
+            "Provide host or config_entry_id, or use device target."
         )
     if len(matches) > 1:
         raise ValueError(
             f"Guest {node}/{vmtype}/{vmid} exists on multiple configured hosts (ambiguous). "
-            "Please provide host or config_entry_id, or use device_id."
+            "Please provide host or config_entry_id, or use device target."
         )
     return matches[0]
 
@@ -175,8 +188,8 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str,
             raise ValueError(f"config_entry_id '{config_entry_id}' not found or not loaded.")
         return config_entry_id
 
-    # 2) by device_id (best + unambiguous)
-    device_id = call.data.get(ATTR_DEVICE_ID)
+    # 2) by device target (best + unambiguous)
+    device_id = _get_target_device_id(call)
     if device_id:
         return _pick_entry_id_for_device(hass, device_id)
 
@@ -185,7 +198,7 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str,
     if host:
         return _pick_entry_id_by_host(hass, host)
 
-    # 4) last resort: guest lookup in resources list
+    # 4) last resort: guest lookup
     node, vmtype, vmid = target
     return _pick_entry_id_by_guest_lookup(hass, node, vmtype, vmid)
 
