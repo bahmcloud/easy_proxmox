@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+- Fixed service validation for device targets:
+  - Home Assistant may pass `device_id` as a list (target/data wrapper)
+  - Services now accept both `str` and `list[str]` for `device_id`
+  - Improved device target parsing for UI and script wrappers
+
 ## 0.7.1
 - Fixed Home Assistant service UI integration:
   - Services now properly expose the **Device selector** in the visual automation editor
