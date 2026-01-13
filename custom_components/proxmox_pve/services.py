@@ -15,7 +15,7 @@ SERVICE_SHUTDOWN = "shutdown"
 SERVICE_STOP_HARD = "stop_hard"
 SERVICE_REBOOT = "reboot"
 
-ATTR_DEVICE_ID = "device_id"  # fallback if user manually puts it into data
+ATTR_DEVICE_ID = "device_id"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_HOST = "host"
 ATTR_NODE = "node"
@@ -24,10 +24,11 @@ ATTR_TYPE = "type"
 
 VALID_TYPES = ("qemu", "lxc")
 
-# NOTE: device selection in UI goes via call.target, not via call.data.
+# IMPORTANT:
+# HA may pass device_id via target (list) OR data (list) depending on UI/script wrapper.
 SERVICE_SCHEMA = vol.Schema(
     {
-        vol.Optional(ATTR_DEVICE_ID): str,
+        vol.Optional(ATTR_DEVICE_ID): vol.Any(str, [str]),
         vol.Optional(ATTR_CONFIG_ENTRY_ID): str,
         vol.Optional(ATTR_HOST): str,
         vol.Optional(ATTR_NODE): str,
@@ -37,21 +38,29 @@ SERVICE_SCHEMA = vol.Schema(
 )
 
 
-def _get_target_device_id(call: ServiceCall) -> str | None:
-    """Return single device_id selected in UI (call.target) or fallback call.data."""
-    # UI target: {"device_id": ["..."]}
-    if call.target and isinstance(call.target, dict):
-        dev_ids = call.target.get("device_id")
-        if isinstance(dev_ids, list) and dev_ids:
-            return dev_ids[0]
-        if isinstance(dev_ids, str):
-            return dev_ids
-
-    # YAML fallback: data.device_id
-    dev_id = call.data.get(ATTR_DEVICE_ID)
-    if isinstance(dev_id, str) and dev_id.strip():
-        return dev_id.strip()
+def _first_str(value: Any) -> str | None:
+    """Return first string from str or list[str], else None."""
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, list) and value:
+        v0 = value[0]
+        if isinstance(v0, str) and v0.strip():
+            return v0.strip()
     return None
+
+
+def _get_target_device_id(call: ServiceCall) -> str | None:
+    """
+    Prefer call.target.device_id (UI target).
+    Fallback to call.data.device_id (some wrappers convert target to data).
+    """
+    if call.target and isinstance(call.target, dict):
+        dev_id = _first_str(call.target.get("device_id"))
+        if dev_id:
+            return dev_id
+
+    # fallback: data.device_id can be str or list[str]
+    return _first_str(call.data.get(ATTR_DEVICE_ID))
 
 
 def _parse_guest_identifier(identifier: str) -> Tuple[str, str, int]:
@@ -82,18 +91,15 @@ def _resolve_target(hass: HomeAssistant, call: ServiceCall) -> Tuple[str, str, i
         if not device:
             raise ValueError(f"Device not found: {device_id}")
 
-        # Find our guest identifier in device.identifiers
         for ident_domain, ident_value in device.identifiers:
             if ident_domain != DOMAIN:
                 continue
-            # Node devices are "node:<name>" — ignore those
             if ident_value.startswith("node:"):
                 continue
             return _parse_guest_identifier(ident_value)
 
         raise ValueError(f"Selected device has no Easy Proxmox guest identifier: {device_id}")
 
-    # manual mode
     if not node or vmid is None:
         raise ValueError("Provide a Device target OR node + vmid (+ optional type/host/config_entry_id).")
 
@@ -111,7 +117,6 @@ def _get_domain_entries(hass: HomeAssistant) -> dict[str, Any]:
 
 
 def _pick_entry_id_for_device(hass: HomeAssistant, device_id: str) -> str:
-    """Pick correct config_entry_id by using device.config_entries."""
     dev_reg = dr.async_get(hass)
     device = dev_reg.async_get(device_id)
     if not device:
@@ -144,7 +149,6 @@ def _pick_entry_id_by_host(hass: HomeAssistant, host: str) -> str:
 
 
 def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, vmid: int) -> str:
-    """Find correct entry by scanning each entry's resources list."""
     domain_entries = _get_domain_entries(hass)
     matches = []
 
@@ -178,33 +182,27 @@ def _pick_entry_id_by_guest_lookup(hass: HomeAssistant, node: str, vmtype: str, 
 
 
 def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall, target: Tuple[str, str, int]) -> str:
-    """Resolve which config entry should execute this service call."""
     domain_entries = _get_domain_entries(hass)
 
-    # 1) explicit config_entry_id
     config_entry_id = call.data.get(ATTR_CONFIG_ENTRY_ID)
     if config_entry_id:
         if config_entry_id not in domain_entries:
             raise ValueError(f"config_entry_id '{config_entry_id}' not found or not loaded.")
         return config_entry_id
 
-    # 2) by device target (best + unambiguous)
     device_id = _get_target_device_id(call)
     if device_id:
         return _pick_entry_id_for_device(hass, device_id)
 
-    # 3) by host
     host = call.data.get(ATTR_HOST)
     if host:
         return _pick_entry_id_by_host(hass, host)
 
-    # 4) last resort: guest lookup
     node, vmtype, vmid = target
     return _pick_entry_id_by_guest_lookup(hass, node, vmtype, vmid)
 
 
 async def async_register_services(hass: HomeAssistant) -> None:
-    """Register services once per HA instance."""
     if hass.services.has_service(DOMAIN, SERVICE_START):
         return
 
@@ -218,7 +216,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
             raise ValueError(f"Selected config entry '{entry_id}' has no client (not loaded).")
 
         client = entry_data["client"]
-
         _LOGGER.debug("Service action=%s entry=%s target=%s/%s/%s", action, entry_id, node, vmtype, vmid)
         await client.guest_action(node=node, vmid=vmid, vmtype=vmtype, action=action)
 
@@ -241,7 +238,6 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
 
 async def async_unregister_services(hass: HomeAssistant) -> None:
-    """Unregister services (optional cleanup)."""
     for svc in (SERVICE_START, SERVICE_SHUTDOWN, SERVICE_STOP_HARD, SERVICE_REBOOT):
         if hass.services.has_service(DOMAIN, svc):
             hass.services.async_remove(DOMAIN, svc)
