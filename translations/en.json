@@ -1,0 +1,32 @@
+{
+  "config": {
+    "error": {
+      "cannot_connect": "Failed to connect to Proxmox API.",
+      "unknown": "Unknown error."
+    },
+    "step": {
+      "user": {
+        "title": "Connect to Proxmox VE",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "verify_ssl": "Verify SSL certificate",
+          "token_name": "Token name (USER@REALM!TOKENID)",
+          "token_value": "Token secret"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Proxmox VE Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "ip_mode": "Preferred IP mode",
+          "ip_prefix": "Custom IP prefix (only for custom mode)"
+        }
+      }
+    }
+  }
+}
