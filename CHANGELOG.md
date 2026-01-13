@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.3
+- Fixed service execution when using device targets in automations and scripts
+- Services now work correctly on Home Assistant versions where `ServiceCall.target` is not available
+- Improved target resolution:
+  - Supports `device_id` passed via UI targets and via service data
+  - Supports `entity_id` targets and automatically resolves them to the corresponding device
+  - Accepts both `str` and `list[str]` formats for target identifiers
+- Fixed issue where service calls were accepted but no Proxmox action was executed
+- Improved compatibility with the Home Assistant automation editor and mobile UI
+
 ## 0.7.2
 - Fixed service validation for device targets:
   - Home Assistant may pass `device_id` as a list (target/data wrapper)
