@@ -219,7 +219,7 @@ The API token has admin rights. Treat it like a root password:
 
 ## License / Support
 
-For public release, add a license file (MIT / Apache 2.0 recommended).
+Look into LICENSE file. 
 
 ---
 
