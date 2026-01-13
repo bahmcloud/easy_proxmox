@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+- Added full service support for automations and scripts:
+  - `proxmox_pve.start`
+  - `proxmox_pve.shutdown`
+  - `proxmox_pve.stop_hard`
+  - `proxmox_pve.reboot`
+- Services are now fully multi-host capable:
+  - Automatic detection of the correct Proxmox host when using `device_id`
+  - Optional selection via `config_entry_id`
+  - Optional selection via `host`
+  - Automatic lookup by `node/vmid/type` if no host is given
+  - Clear error handling for ambiguous multi-host targets
+- Services can be used in:
+  - Automations
+  - Scripts
+  - Dashboards
+- Added `services.yaml` for proper UI descriptions in Home Assistant
+- Easy Proxmox can now be fully controlled without any buttons or switches, purely via automations
+
 ## 0.6.1
 - Fix correct autor in hacs
 
@@ -91,4 +110,5 @@
 - API token authentication
 - Basic connectivity test via Config Flow
 - First experimental entities
+
 
