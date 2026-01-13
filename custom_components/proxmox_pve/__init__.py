@@ -17,6 +17,7 @@ from .const import (
     DEFAULT_IP_PREFIX,
 )
 from .coordinator import ProxmoxResourcesCoordinator, ProxmoxNodesCoordinator
+from .services import async_register_services, async_unregister_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,14 +34,12 @@ async def _apply_options_now(hass: HomeAssistant, entry: ConfigEntry) -> None:
     new_ip_mode = str(_opt(entry, CONF_IP_MODE, DEFAULT_IP_MODE))
     new_ip_prefix = str(_opt(entry, CONF_IP_PREFIX, DEFAULT_IP_PREFIX))
 
-    # store new values for future coordinator creations
     data["scan_interval"] = new_scan_interval
     data["ip_mode"] = new_ip_mode
     data["ip_prefix"] = new_ip_prefix
 
     td = timedelta(seconds=new_scan_interval)
 
-    # cluster coordinators
     resources = data.get("resources")
     if resources:
         resources.update_interval = td
@@ -49,11 +48,9 @@ async def _apply_options_now(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if nodes:
         nodes.update_interval = td
 
-    # node coordinators
     for node_coord in (data.get("node_coordinators") or {}).values():
         node_coord.update_interval = td
 
-    # guest coordinators (also update ip preference config)
     for guest_coord in (data.get("guest_coordinators") or {}).values():
         guest_coord.update_interval = td
         guest_coord.ip_mode = new_ip_mode
@@ -72,10 +69,8 @@ async def _apply_options_now(hass: HomeAssistant, entry: ConfigEntry) -> None:
     for guest_coord in (data.get("guest_coordinators") or {}).values():
         tasks.append(guest_coord.async_request_refresh())
 
-    if tasks:
-        # don't fail all if one refresh fails
-        for t in tasks:
-            hass.async_create_task(t)
+    for t in tasks:
+        hass.async_create_task(t)
 
     _LOGGER.debug(
         "Applied options live for %s: scan_interval=%s ip_mode=%s ip_prefix=%s",
@@ -87,7 +82,6 @@ async def _apply_options_now(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Called by HA when options are changed."""
     await _apply_options_now(hass, entry)
 
 
@@ -122,12 +116,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "scan_interval": scan_interval,
         "ip_mode": ip_mode,
         "ip_prefix": ip_prefix,
-        "guest_coordinators": {},   # (node, vmtype, vmid) -> ProxmoxGuestCoordinator
-        "node_coordinators": {},    # node -> ProxmoxNodeCoordinator
-        "platform_cache": {},       # per-platform caches + unsub handles
+        "guest_coordinators": {},
+        "node_coordinators": {},
+        "platform_cache": {},
     }
 
-    # Apply option updates live (gear icon -> save)
+    # Register services once
+    await async_register_services(hass)
+
+    # Apply option updates live
     entry.async_on_unload(entry.add_update_listener(_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -151,5 +148,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             if data.get("session"):
                 await data["session"].close()
+
+        # If no entries remain, unregister services
+        if not hass.data.get(DOMAIN):
+            await async_unregister_services(hass)
 
     return unload_ok
