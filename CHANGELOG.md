@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+- Fix correct autor in hacs
+
+## 0.6.0
+- Added object structure für using as repositorie in hacs
+
 ## 0.6.0-alpha
 - Extended Node monitoring with additional sensors:
   - RAM Total (MB) and RAM Free (MB)
@@ -85,3 +91,4 @@
 - API token authentication
 - Basic connectivity test via Config Flow
 - First experimental entities
+
