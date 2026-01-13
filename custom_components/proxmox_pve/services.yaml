@@ -1,0 +1,99 @@
+start:
+  name: Start guest
+  description: Start a VM or container.
+  fields:
+    device_id:
+      name: Device
+      description: Select the VM/CT device (recommended, works with multi-host).
+      example: "a1b2c3d4e5f6..."
+    config_entry_id:
+      name: Config entry id
+      description: Optional. Force a specific Proxmox host configuration entry.
+    host:
+      name: Host
+      description: Optional. Proxmox host/IP of the configured entry (only used when device_id is not provided).
+      example: "192.168.178.101"
+    node:
+      name: Node
+      description: Proxmox node name (only used when device_id is not provided).
+      example: "pve1"
+    vmid:
+      name: VMID
+      description: Guest VMID (only used when device_id is not provided).
+      example: 100
+    type:
+      name: Type
+      description: Guest type.
+      example: "qemu"
+
+shutdown:
+  name: Shutdown guest
+  description: Soft shutdown a VM or container.
+  fields:
+    device_id:
+      name: Device
+      description: Select the VM/CT device (recommended, works with multi-host).
+    config_entry_id:
+      name: Config entry id
+      description: Optional. Force a specific Proxmox host configuration entry.
+    host:
+      name: Host
+      description: Optional. Proxmox host/IP of the configured entry (only used when device_id is not provided).
+    node:
+      name: Node
+      description: Proxmox node name (only used when device_id is not provided).
+    vmid:
+      name: VMID
+      description: Guest VMID (only used when device_id is not provided).
+    type:
+      name: Type
+      description: Guest type.
+      example: "qemu"
+
+stop_hard:
+  name: Stop guest (hard)
+  description: Hard stop a VM or container (equivalent to Stop).
+  fields:
+    device_id:
+      name: Device
+      description: Select the VM/CT device (recommended, works with multi-host).
+    config_entry_id:
+      name: Config entry id
+      description: Optional. Force a specific Proxmox host configuration entry.
+    host:
+      name: Host
+      description: Optional. Proxmox host/IP of the configured entry (only used when device_id is not provided).
+    node:
+      name: Node
+      description: Proxmox node name (only used when device_id is not provided).
+    vmid:
+      name: VMID
+      description: Guest VMID (only used when device_id is not provided).
+    type:
+      name: Type
+      description: Guest type.
+      example: "qemu"
+
+reboot:
+  name: Reboot guest
+  description: Reboot a VM or container.
+  fields:
+    device_id:
+      name: Device
+      description: Select the VM/CT device (recommended, works with multi-host).
+    config_entry_id:
+      name: Config entry id
+      description: Optional. Force a specific Proxmox host configuration entry.
+    host:
+      name: Host
+      description: Optional. Proxmox host/IP of the configured entry (only used when device_id is not provided).
+    node:
+      name: Node
+      description: Proxmox node name (only used when device_id is not provided).
+    vmid:
+      name: VMID
+      description: Guest VMID (only used when device_id is not provided).
+    type:
+      name: Type
+      description: Guest type.
+      example: "qemu"
