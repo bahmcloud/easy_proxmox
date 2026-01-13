@@ -4,8 +4,9 @@
   "version": "0.6.0-alpha",
   "documentation": "https://example.invalid",
   "requirements": ["aiohttp>=3.9.0"],
-  "codeowners": ["@BAHMCLOUD", "@ReneBachmann"],
+  "codeowners": ["@bahmcloud", "@ReneBachmann"],
   "config_flow": true,
   "iot_class": "local_polling",
   "integration_type": "service"
 }
+
