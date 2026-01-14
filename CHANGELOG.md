@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.5
+- Added extended Diagnostics export
+  - Includes Proxmox version information (`/version`)
+  - Includes cluster metadata (`/cluster/status`)
+  - Adds node, VM and container counts
+- Diagnostics are safe for public sharing
+  - All IP addresses are masked
+  - API tokens remain redacted
+  - Token names are partially anonymized (first 2 + last 2 characters)
+
 ## 0.7.4
 - Added Home Assistant Diagnostics support
   - New “Download diagnostics” feature for each Easy Proxmox config entry
@@ -146,6 +156,7 @@
 - API token authentication
 - Basic connectivity test via Config Flow
 - First experimental entities
+
 
 
 
