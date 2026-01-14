@@ -329,6 +329,14 @@ The API token has admin rights. Treat it like a root password:
 | Buttons don’t work        | Check Proxmox permissions (PVEAdmin role)                                              |
 | Old devices remain        | Fully cleaned up automatically since version 0.4.1                                     |
 
+### Diagnostics
+
+If you open an issue on GitHub, please attach a diagnostics export:
+
+Settings → Devices & Services → Easy Proxmox → (⋮) → Download diagnostics
+
+This export is automatically sanitized (API token is redacted).
+
 ---
 
 ## Support & Contributing
