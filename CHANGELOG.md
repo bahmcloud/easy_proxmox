@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.4
+- Added Home Assistant Diagnostics support
+  - New “Download diagnostics” feature for each Easy Proxmox config entry
+  - Diagnostics include:
+    - Config entry data and options (sanitized)
+    - Runtime client information
+    - Coordinator states (last update success, exceptions, update interval)
+    - Safe previews of nodes and guests
+  - Sensitive data such as API tokens and credentials are automatically redacted
+  - Diagnostics are fully JSON-serializable and suitable for GitHub issue attachments
+
 ## 0.7.3
 - Fixed service execution when using device targets in automations and scripts
 - Services now work correctly on Home Assistant versions where `ServiceCall.target` is not available
@@ -135,6 +146,7 @@
 - API token authentication
 - Basic connectivity test via Config Flow
 - First experimental entities
+
 
 
 
